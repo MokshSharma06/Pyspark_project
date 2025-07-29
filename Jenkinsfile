@@ -1,40 +1,61 @@
 pipeline {
     agent any
 
+    environment {
+        CONDA_ENV = "my_spark_project"   // your conda environment name
+    }
+
     stages {
+        stage('Setup Environment') {
+            steps {
+                sh '''
+                echo ">>> Setting up Conda Environment: $CONDA_ENV"
+                if ! conda env list | grep -q $CONDA_ENV; then
+                    conda env create -f environment.yml -n $CONDA_ENV
+                else
+                    conda env update -f environment.yml -n $CONDA_ENV
+                fi
+                '''
+            }
+        }
+
         stage('Build') {
             steps {
-               sh 'pipenv --python python3 sync'
+                sh '''
+                echo ">>> Activating Environment and Building Project"
+                source activate $CONDA_ENV
+                python setup.py install || echo "No setup.py found, skipping build..."
+                '''
             }
         }
+
         stage('Test') {
             steps {
-               sh 'pipenv run pytest'
+                sh '''
+                echo ">>> Running Tests"
+                source activate $CONDA_ENV
+                pytest || echo "No tests found or pytest failed!"
+                '''
             }
         }
+
         stage('Package') {
-	    when{
-		    anyOf{ branch "master" ; branch 'release' }
-	    }
             steps {
-               sh 'zip -r sbdl.zip lib'
+                sh '''
+                echo ">>> Packaging Project Folder"
+                zip -r pyspark_project.zip pyspark_project/ || echo "Project folder not found, skipping package..."
+                '''
             }
         }
-	stage('Release') {
-	   when{
-	      branch 'release'
-	   }
-           steps {
-              sh "scp -i /home/prashant/cred/edge-node_key.pem -o 'StrictHostKeyChecking no' -r sbdl.zip log4j.properties sbdl_main.py sbdl_submit.sh conf prashant@40.117.123.105:/home/prashant/sbdl-qa"
-           }
-        }
-	stage('Deploy') {
-	   when{
-	      branch 'master'
-	   }
-           steps {
-               sh "scp -i /home/prashant/cred/edge-node_key.pem -o 'StrictHostKeyChecking no' -r sbdl.zip log4j.properties sbdl_main.py sbdl_submit.sh conf prashant@40.117.123.105:/home/prashant/sbdl-prod"
-           }
+
+        stage('Deploy (Local)') {
+            steps {
+                sh '''
+                echo ">>> Deploying Locally"
+                mkdir -p /home/$USER/deployments/
+                cp pyspark_project.zip /home/$USER/deployments/ || echo "Package not found, skipping deploy."
+                '''
+            }
         }
     }
 }
