@@ -5,19 +5,21 @@ pipeline {
         CONDA_ENV = "my_spark_project"   // your conda environment name
     }
 
-    stages {
-        stage('Setup Environment') {
-            steps {
-                sh '''
-                echo ">>> Setting up Conda Environment: $CONDA_ENV"
-                if ! conda env list | grep -q $CONDA_ENV; then
-                    conda env create -f environment.yml -n $CONDA_ENV
-                else
-                    conda env update -f environment.yml -n $CONDA_ENV
-                fi
-                '''
-            }
-        }
+    stage('Setup Environment') {
+    steps {
+        sh '''
+        /usr/local/miniconda3/bin/conda env list | grep -q my_spark_project
+        if [ $? -ne 0 ]; then
+            echo ">>> Creating Conda Environment: my_spark_project"
+            /usr/local/miniconda3/bin/conda env create -f environment.yml -n my_spark_project
+        else
+            echo ">>> Updating Conda Environment: my_spark_project"
+            /usr/local/miniconda3/bin/conda env update -f environment.yml -n my_spark_project
+        fi
+        '''
+    }
+}
+
 
         stage('Build') {
             steps {
