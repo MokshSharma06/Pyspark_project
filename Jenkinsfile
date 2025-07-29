@@ -24,7 +24,7 @@ pipeline {
             steps {
                 sh '''
                 echo ">>> Activating Environment and Building Project"
-                source activate $CONDA_ENV
+                /usr/local/miniconda3/bin/conda run -n my_spark_project python setup.py install || echo "No setup.py found, skipping build..."
                 python setup.py install || echo "No setup.py found, skipping build..."
                 '''
             }
@@ -34,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                 echo ">>> Running Tests"
-                source activate $CONDA_ENV
+                /usr/local/miniconda3/bin/conda run -n my_spark_project pytest || echo "No tests found or pytest failed!"
                 pytest || echo "No tests found or pytest failed!"
                 '''
             }
