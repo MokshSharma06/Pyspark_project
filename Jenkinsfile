@@ -41,9 +41,13 @@ pipeline {
         stage('Package') {
             steps {
                 sh '''
-                echo ">>> Packaging Project Folder"
-                zip -r pyspark_project.zip pyspark_project/ || echo "Project folder not found, skipping package..."
-                '''
+                if [ -d pyspark_project ]; then
+    zip -r pyspark_project.zip pyspark_project/
+else
+    echo "WARNING: Folder 'pyspark_project/' not found, zipping entire workspace instead."
+    zip -r pyspark_project.zip .
+fi
+'''
             }
         }
 
