@@ -5,28 +5,26 @@ pipeline {
         CONDA_ENV = "my_spark_project"   // your conda environment name
     }
 
-    stage('Setup Environment') {
-    steps {
-        sh '''
-        /usr/local/miniconda3/bin/conda env list | grep -q my_spark_project
-        if [ $? -ne 0 ]; then
-            echo ">>> Creating Conda Environment: my_spark_project"
-            /usr/local/miniconda3/bin/conda env create -f environment.yml -n my_spark_project
-        else
-            echo ">>> Updating Conda Environment: my_spark_project"
-            /usr/local/miniconda3/bin/conda env update -f environment.yml -n my_spark_project
-        fi
-        '''
-    }
-}
-
+    stages {
+        stage('Setup Environment') {
+            steps {
+                sh '''
+                if /usr/local/miniconda3/bin/conda env list | grep -q my_spark_project; then
+                    echo ">>> Updating Conda Environment: my_spark_project"
+                    /usr/local/miniconda3/bin/conda env update -f environment.yml -n my_spark_project
+                else
+                    echo ">>> Creating Conda Environment: my_spark_project"
+                    /usr/local/miniconda3/bin/conda env create -f environment.yml -n my_spark_project
+                fi
+                '''
+            }
+        }
 
         stage('Build') {
             steps {
                 sh '''
                 echo ">>> Activating Environment and Building Project"
-                source activate $CONDA_ENV
-                python setup.py install || echo "No setup.py found, skipping build..."
+                /usr/local/miniconda3/bin/conda run -n my_spark_project python setup.py install || echo "No setup.py found, skipping build..."
                 '''
             }
         }
@@ -35,8 +33,7 @@ pipeline {
             steps {
                 sh '''
                 echo ">>> Running Tests"
-                source activate $CONDA_ENV
-                pytest || echo "No tests found or pytest failed!"
+                /usr/local/miniconda3/bin/conda run -n my_spark_project pytest || echo "No tests found or pytest failed!"
                 '''
             }
         }
@@ -44,19 +41,30 @@ pipeline {
         stage('Package') {
             steps {
                 sh '''
-                echo ">>> Packaging Project Folder"
-                zip -r pyspark_project.zip pyspark_project/ || echo "Project folder not found, skipping package..."
-                '''
+                if [ -d pyspark_project ]; then
+    zip -r pyspark_project.zip pyspark_project/
+else
+    echo "WARNING: Folder 'pyspark_project/' not found, zipping entire workspace instead."
+    zip -r pyspark_project.zip .
+fi
+'''
             }
         }
 
         stage('Deploy (Local)') {
             steps {
                 sh '''
-                echo ">>> Deploying Locally"
-                mkdir -p /home/$USER/deployments/
-                cp pyspark_project.zip /home/$USER/deployments/ || echo "Package not found, skipping deploy."
+                echo ">>> Deploying Locally to /var/lib/jenkins/deployments"
+                mkdir -p /var/lib/jenkins/deployments
+                cp pyspark_project.zip /var/lib/jenkins/deployments/deploy.zip || echo "No zip file to deploy!"
+                cp /var/lib/jenkins/deployments/deploy.zip $WORKSPACE/deploy.zip || true
                 '''
+            }
+        }
+
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'deploy.zip', fingerprint: true
             }
         }
     }
