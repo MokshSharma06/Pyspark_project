@@ -52,9 +52,9 @@ pipeline {
         stage('Deploy (Local)') {
             steps {
                 sh '''
-                echo ">>> Deploying Locally"
-                mkdir -p /home/$USER/deployments/
-                cp pyspark_project.zip /home/$USER/deployments/ || echo "Package not found, skipping deploy."
+                echo ">>> Deploying Locally to /var/lib/jenkins/deployments"
+        mkdir -p /var/lib/jenkins/deployments
+        cp pyspark_project.zip /var/lib/jenkins/deployments/deploy.zip || echo "No zip file to deploy!"
                 '''
             }
         }
