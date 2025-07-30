@@ -25,7 +25,6 @@ pipeline {
                 sh '''
                 echo ">>> Activating Environment and Building Project"
                 /usr/local/miniconda3/bin/conda run -n my_spark_project python setup.py install || echo "No setup.py found, skipping build..."
-                python setup.py install || echo "No setup.py found, skipping build..."
                 '''
             }
         }
@@ -35,7 +34,6 @@ pipeline {
                 sh '''
                 echo ">>> Running Tests"
                 /usr/local/miniconda3/bin/conda run -n my_spark_project pytest || echo "No tests found or pytest failed!"
-                pytest || echo "No tests found or pytest failed!"
                 '''
             }
         }
@@ -53,10 +51,17 @@ pipeline {
             steps {
                 sh '''
                 echo ">>> Deploying Locally to /var/lib/jenkins/deployments"
-        mkdir -p /var/lib/jenkins/deployments
-        cp pyspark_project.zip /var/lib/jenkins/deployments/deploy.zip || echo "No zip file to deploy!"
+                mkdir -p /var/lib/jenkins/deployments
+                cp pyspark_project.zip /var/lib/jenkins/deployments/deploy.zip || echo "No zip file to deploy!"
+                cp /var/lib/jenkins/deployments/deploy.zip $WORKSPACE/deploy.zip || true
                 '''
             }
         }
-    } // closes stages
-} // closes pipeline
+
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'deploy.zip', fingerprint: true
+            }
+        }
+    }
+}
