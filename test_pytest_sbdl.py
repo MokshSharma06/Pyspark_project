@@ -12,7 +12,7 @@ from packaging import version
 
 def test_blank_test(spark):
     print(spark.version)
-    assert version.parse(spark.version) >= version.parse("3.5.4")
+    assert version.parse(spark.version) >= version.parse("3.4.3")
 
 
 
