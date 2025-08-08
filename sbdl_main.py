@@ -1,5 +1,5 @@
 import sys
-from lib import DataLoader
+from lib import DataLoader , ConfigLoader , Transformations
 from lib import Utils
 from lib.logger import Log4j
 
@@ -21,8 +21,23 @@ if __name__ == '__main__':
 
     logger.info("Finished creating Spark Session")
 
-    # ✅ Call the read_parties function
+    logger.info("Reading SBDL Account DF")
+    accounts_df = DataLoader.read_accounts(spark, job_run_env, enable_hive, hive_db)
+    contract_df = Transformations.get_contract(accounts_df)
+
+    logger.info("Reading SBDL Party DF")
     parties_df = DataLoader.read_parties(spark, job_run_env, enable_hive, hive_db)
-    parties_df.show(5)
+    relations_df = Transformations.get_relations(parties_df)
+
+    logger.info("Reading SBDL Address DF")
+    address_df = DataLoader.read_address(spark, job_run_env, enable_hive, hive_db)
+    relation_address_df = Transformations.get_address(address_df)
+
+    logger.info("Join Party Relations and Address")
+    party_address_df = Transformations.join_party_address(relations_df, relation_address_df)
+
+    logger.info("Join Account and Parties")
+    data_df = Transformations.join_contract_party(contract_df, party_address_df)
 
     spark.stop()
+    logger.info("spark stopped")
