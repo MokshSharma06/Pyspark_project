@@ -1,7 +1,8 @@
 import sys
-
+from lib import DataLoader , ConfigLoader , Transformations
 from lib import Utils
 from lib.logger import Log4j
+
 if __name__ == '__main__':
 
     if len(sys.argv) < 3:
@@ -11,7 +12,32 @@ if __name__ == '__main__':
     job_run_env = sys.argv[1].upper()
     load_date = sys.argv[2]
 
+    # Create Spark session
     spark = Utils.get_spark_session(job_run_env)
     logger = Log4j(spark)
 
+    enable_hive = False  # Set to True if using Hive
+    hive_db = "your_hive_db"
+
     logger.info("Finished creating Spark Session")
+
+    logger.info("Reading SBDL Account DF")
+    accounts_df = DataLoader.read_accounts(spark, job_run_env, enable_hive, hive_db)
+    contract_df = Transformations.get_contract(accounts_df)
+
+    logger.info("Reading SBDL Party DF")
+    parties_df = DataLoader.read_parties(spark, job_run_env, enable_hive, hive_db)
+    relations_df = Transformations.get_relations(parties_df)
+
+    logger.info("Reading SBDL Address DF")
+    address_df = DataLoader.read_address(spark, job_run_env, enable_hive, hive_db)
+    relation_address_df = Transformations.get_address(address_df)
+
+    logger.info("Join Party Relations and Address")
+    party_address_df = Transformations.join_party_address(relations_df, relation_address_df)
+
+    logger.info("Join Account and Parties")
+    data_df = Transformations.join_contract_party(contract_df, party_address_df)
+
+    spark.stop()
+    logger.info("spark stopped")
